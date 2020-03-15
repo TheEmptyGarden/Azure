@@ -19,11 +19,14 @@ $EmptyGardenAzureSubscriptionID = (Get-AzureRmSubscription -SubscriptionName Emp
   $WinRMHTTPPort = "5985"
   $WinRMHTTPSPort = "5986"
   $EmptyGardenDNS = "10.10.10.10"
+  $EmptyGardenDHCP = "10.10.10.10"
+  $EmptyGardenDefaultGateway = "10.10.10.254"
   $NetworkSecurityGroupName = "EmptyGardenNSG"
   $KeyVaultName = "EmptyGardenKeyVault"
   $DomainName = "EmptyGarden.info"
   $EmptyGardenRootCA = "EmptyGardenRootCA"
 
+  $SQLKEy = "TDKQD-PKV44-PJT4N-TCJG2-3YJ6B"
 
 #VM Image Variables
   $VMImagePublisherServer = "MicrosoftWindowsServer"  
@@ -33,9 +36,14 @@ $EmptyGardenAzureSubscriptionID = (Get-AzureRmSubscription -SubscriptionName Emp
   $VMImageOfferServerSemiAnnual = "WindowsServerSemiAnnual"
   $VMImageOfferWorkstation = "Windows-10"
 
-  $VMImageOfferSKUServer = "datacenter-core-1909-with-containers-smalldisk-g2"
+  $VMImageOfferSKUServer = "2019-datacenter-gensecond"
   $VMImageOfferSKUServerSemiAnnual = "datacenter-core-1909-with-containers-smalldisk-g2"
   $VMImageOfferSKUWorsktation = "rs5-pro"
+
+  $VMImageOfferSKUServerKey = "J2NJ3-W6JKD-DQHKG-DC7HQ-H24B4"
+  $VMImageOfferSKUServerSemiAnnualKey = "J2NJ3-W6JKD-DQHKG-DC7HQ-H24B4"
+  $SQLKey = "TDKQD-PKV44-PJT4N-TCJG2-3YJ6B"
+
 
 #VM Image Size Variables
   $VMSizeServerSmall = "Standard_B1ms"
@@ -43,7 +51,9 @@ $EmptyGardenAzureSubscriptionID = (Get-AzureRmSubscription -SubscriptionName Emp
   $VMSizeWorkstationSmall = "Standard_B1ms"
 
 #VM Global variables
-  $EmptyGardenAdminUser = Get-Credential -UserName "EmptyGardenAdmin" -Message "Enter password for EmptyGardenAdmin account"
+  #$EmptyGardenAdminUser = Get-Credential -UserName "EmptyGardenAdmin" -Message "Enter password for EmptyGardenAdmin account"
+  $EmptyGardenAdminUser = "EmptyGardenAdmin"
+  $EmptyGardenAdminPassword = Read-Host -Prompt "Enter the password for EmptyGardenAdmin" -AsSecureString
   $VMTimeZone = "Central Standard Time"
 
 #TEE-DC-AZ variables
@@ -53,13 +63,13 @@ $EmptyGardenAzureSubscriptionID = (Get-AzureRmSubscription -SubscriptionName Emp
   $TEEDCAZIP = "10.10.10.10"
   $TEEDCAZName = "TEE-DC-AZ"
   $TEEDCAZDisk = "TEEDCAZOSDisk"
-  $TEEDCAZDiskSize = "30"
+  $TEEDCAZDiskSize = "32"
 
 #VM Auto Shutdown Variables
 $ScheduledShutdownPropertiesTEEDCAZ = @{}
 $ScheduledShutdownPropertiesTEEDCAZ.Add('status', 'Enabled')
 $ScheduledShutdownPropertiesTEEDCAZ.Add('taskType', 'ComputeVmShutdownTask')
-$ScheduledShutdownPropertiesTEEDCAZ.Add('dailyRecurrence', @{'time'= 1800})
+$ScheduledShutdownPropertiesTEEDCAZ.Add('dailyRecurrence', @{'time'= 2200})
 $ScheduledShutdownPropertiesTEEDCAZ.Add('timeZoneId', "Central Standard Time")
 $ScheduledShutdownPropertiesTEEDCAZ.Add('notificationSettings', @{status='Disabled'; timeInMinutes=15})
 
@@ -70,13 +80,13 @@ $ScheduledShutdownPropertiesTEEDCAZ.Add('notificationSettings', @{status='Disabl
   $TEESQLAZIP = "10.10.10.20"
   $TEESQLAZName = "TEE-SQL-AZ"
   $TEESQLAZDisk = "TEESQLAZOSDisk"
-  $TEESQLAZDiskSize = "128"
+  $TEESQLAZDiskSize = "64"
 
 #TEE-SQL-AZ VM Auto Shutdown Variables
   $ScheduledShutdownPropertiesTEESQLAZ = @{}
   $ScheduledShutdownPropertiesTEESQLAZ.Add('status', 'Enabled')
   $ScheduledShutdownPropertiesTEESQLAZ.Add('taskType', 'ComputeVmShutdownTask')
-  $ScheduledShutdownPropertiesTEESQLAZ.Add('dailyRecurrence', @{'time'= 1800})
+  $ScheduledShutdownPropertiesTEESQLAZ.Add('dailyRecurrence', @{'time'= 2200})
   $ScheduledShutdownPropertiesTEESQLAZ.Add('timeZoneId', "Central Standard Time")
   $ScheduledShutdownPropertiesTEESQLAZ.Add('notificationSettings', @{status='Disabled'; timeInMinutes=15})
 
@@ -93,11 +103,15 @@ $ScheduledShutdownPropertiesTEEDCAZ.Add('notificationSettings', @{status='Disabl
   $ScheduledShutdownPropertiesTEECMAZ = @{}
   $ScheduledShutdownPropertiesTEECMAZ.Add('status', 'Enabled')
   $ScheduledShutdownPropertiesTEECMAZ.Add('taskType', 'ComputeVmShutdownTask')
-  $ScheduledShutdownPropertiesTEECMAZ.Add('dailyRecurrence', @{'time'= 1800})
+  $ScheduledShutdownPropertiesTEECMAZ.Add('dailyRecurrence', @{'time'= 2200})
   $ScheduledShutdownPropertiesTEECMAZ.Add('timeZoneId', "Central Standard Time")
   $ScheduledShutdownPropertiesTEECMAZ.Add('notificationSettings', @{status='Disabled'; timeInMinutes=15})
 
+# ISO
+  $SQLISO = "F:\Software\SQL\ISO\en_sql_server_2017_enterprise_x64_dvd_11293666.iso"
 
+# Host file
+  $TEEHOST = "F:\Software\Host\hosts"
 <#
 
 # Modules required
@@ -168,8 +182,7 @@ $VirtualNetwork | Set-AzureRmVirtualNetwork
 $KeyVault = New-AzureRmKeyVault -Name $KeyVaultName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $Location -EnabledForDeployment -EnabledForDiskEncryption -EnabledForTemplateDeployment
 
 # Create secret for EmtpyGardenAdmin
-$Secret = ConvertTo-SecureString $EmpptyGardenAminUser.password -AsPlainText -Force
-$KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.VaultName -Name $EmptyGardenAdminUser.UserName -SecretValue $Secret
+$KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.VaultName -Name $EmptyGardenAdminUser -SecretValue $EmptyGardenAdminPassword
 
 # Create TEE-DC-AZ
 
@@ -181,7 +194,7 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
 
   # Create a virtual network card and associate with public IP address and NSG
   $IPConfig = New-AzureRmNetworkInterfaceIpConfig -Name $TEEDCAZIPName -PrivateIpAddressVersion IPv4 -PrivateIpAddress $TEEDCAZIP -SubnetId $VirtualNetwork.subnets.id -PublicIpAddressId $PublicAddress.Id
-  $nic = New-AzureRmNetworkInterface -Name $TEEDCAZNICName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $location -IpConfiguration $IPConfig -DnsServer $EmptyGardenDNS
+  $nic = New-AzureRmNetworkInterface -Name $TEEDCAZNICName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $location -IpConfiguration $IPConfig #-DnsServer $EmptyGardenDNS
 
   # Create a virtual machine configuration
   $VirtualMachineConfig = New-AzureRmVMConfig -VMName $TEEDCAZName -VMSize $VMSizeServerSmall
@@ -210,11 +223,116 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
   # Create TEE-DC-AZ
   $TEEDCAZAzureVM = New-AzureRmVM -ResourceGroupName $ResourceGroup.ResourceGroupName -Location $location -VM $VirtualMachineConfig -LicenseType "Windows_Server"
 
+  <#
   #Set the auto shutdown schedule
   $TEEDCAZVM = Get-AzureRmVM -ResourceGroupName $ResourceGroupName -Name $TEEDCAZName
   $ScheduledShutdownPropertiesTEEDCAZ.Add('targetResourceId', $TEEDCAZVM.Id)
   $ScheduledShutdownResourceId = "/subscriptions/$EmptyGardenAzureSubscriptionID/resourceGroups/$ResourceGroupName/providers/Microsoft.DevTestLab/schedules/shutdown-computevm-$TEEDCAZName"
   New-AzureRmResource -Location $Location -ResourceId $ScheduledShutdownResourceId  -Properties $ScheduledShutdownPropertiesTEEDCAZ  -Force
+  #>
+
+  # Create EmptyGarden.info Domain
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $TEEDCAZName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEEDCAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEEDCAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-WindowsFeature AD-Domain-Services -IncludeManagementTools}
+$TEEDCAZDomainCreation = Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-ADDSForest -DomainName $Using:DomainName -SafeModeAdministratorPassword $Using:AdminPassword -InstallDns -Force}
+Wait-Job -Job $TEEDCAZDomainCreation
+<#
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Restart-Computer -Force}
+#>
+
+Start-Sleep -Seconds 120
+
+
+# Create DHCP
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEEDCAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEEDCAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-WindowsFeature -Name 'DHCP' -IncludeManagementTools}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Add-DhcpServerV4Scope -Name "EmptyGarden DHCP Scope" -StartRange 10.10.10.100 -EndRange 10.10.10.150 -SubnetMask 255.255.255.0}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Set-DhcpServerV4OptionValue -DnsServer 10.10.10.10 -Router 10.10.10.1}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Set-DhcpServerv4Scope -ScopeId 10.10.10.10 -LeaseDuration 1.00:00:00}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Restart-service dhcpserver}
+
+# Create PKI
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Add-WindowsFeature ADCS-Cert-Authority -IncludeManagementTools}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-WindowsFeature Web-WebServer -IncludeManagementTools}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Add-WindowsFeature ADCS-web-enrollment}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-Item -ItemType Directory -Path C:\CertEnroll}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-smbshare -name CertEnroll C:\CertEnroll -FullAccess SYSTEM,"$Using:DomainName\Domain Admins" -ChangeAccess "$Using:DomainName\Cert Publishers"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-ADcsCertificationAuthority -CACommonName $Using:EmptyGardenRootCA -CAType EnterpriseRootCA -CryptoProviderName "RSA#Microsoft Software Key Storage Provider" -HashAlgorithmName SHA256 -KeyLength 2048 -ValidityPeriod Years -ValidityPeriodUnits 20 -force}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg CA\CRLPublicationURLs "1:C:\Windows\system32\CertSrv\CertEnroll\%3%8%9.crl \n10:ldap:///CN=%7%8,CN=%2,CN=CDP,CN=Public Key Services,CN=Services,%6%10\n2:http://crt.rebeladmin.com/CertEnroll/%3%8%9.crl"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg CA\CACertPublicationURLs "1:C:\Windows\system32\CertSrv\CertEnroll\%1_%3%4.crt\n2:ldap:///CN=%7,CN=AIA,CN=Public Key Services,CN=Services,%6%11\n2:http://crt.rebeladmin.com/CertEnroll/%1_%3%4.crt"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg ca\ValidityPeriod "Years"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg ca\ValidityPeriodUnits 20}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLPeriodUnits 13}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLPeriod "Weeks"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLDeltaPeriodUnits 0}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLOverlapPeriodUnits 6}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLOverlapPeriod "Hours"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Restart-Service certsvc}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -crl}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-ADCSwebenrollment -force}
+
+# Create OU's
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEEDCAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEEDCAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADOrganizationalUnit -Name "CurrentBranch" -Path "DC=EmptyGarden,DC=info"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADOrganizationalUnit -Name "Servers" -Path "OU=CurrentBranch,DC=EmptyGarden,DC=info"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADOrganizationalUnit -Name "Workstations" -Path "OU=CurrentBranch,DC=EmptyGarden,DC=info"}
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADOrganizationalUnit -Name "TechnicalPreview" -Path "DC=EmptyGarden,DC=info"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADOrganizationalUnit -Name "Servers" -Path "OU=TechnicalPreview,DC=EmptyGarden,DC=info"}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADOrganizationalUnit -Name "Workstations" -Path "OU=TechnicalPreview,DC=EmptyGarden,DC=info"}
+
+# Enable file and print sharing
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEEDCAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEEDCAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled True -Profile Domain}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-NetFirewallRule -Name 'ICMPv4' -DisplayName 'ICMPv4' -Description 'Allow ICMPv4' -Profile Any -Direction Inbound -Action Allow -Protocol ICMPv4 -Program Any -LocalAddress Any -RemoteAddress Any }
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "HTTP" -Direction Inbound –Protocol TCP –LocalPort 80 -Action allow}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SSL" -Direction Inbound –Protocol TCP –LocalPort 443 -Action allow}
+
+Copy-Item -Path $TEEHOST -destination C:\Windows\System32\drivers\etc -ToSession $TEEDCAZSession 
+
 
 # Create TEE-SQL-AZ
 
@@ -225,7 +343,7 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
 
   # Create a virtual network card and associate with public IP address and NSG
   $IPConfig = New-AzureRmNetworkInterfaceIpConfig -Name $TEESQLAZIPName -PrivateIpAddressVersion IPv4 -PrivateIpAddress $TEESQLAZIP -SubnetId $VirtualNetwork.subnets.id -PublicIpAddressId $PublicAddress.Id
-  $nic = New-AzureRmNetworkInterface -Name $TEESQLAZNICName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $location -IpConfiguration $IPConfig -DnsServer $EmptyGardenDNS
+  $nic = New-AzureRmNetworkInterface -Name $TEESQLAZNICName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $location -IpConfiguration $IPConfig #-DnsServer $EmptyGardenDNS
 
   # Create a virtual machine configuration
   $VirtualMachineConfig = New-AzureRmVMConfig -VMName $TEESQLAZName -VMSize $VMSizeServerLarge
@@ -239,7 +357,7 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
   $VirtualMachineOS = Set-AzureRmVMOperatingSystem -VM $VirtualMachineConfig -Windows -ComputerName $TEESQLAZName -Credential $Cred  -WinRMHttp -ProvisionVMAgent -EnableAutoUpdate -TimeZone $VMTimeZone #-WinRMHttps  -WinRMCertificateUrl $WinRMCertUrl
   
   #Set the OS
-  $VirtualMachineSourceImage = Set-AzureRmVMSourceImage -VM  $VirtualMachineConfig -PublisherName $VMImagePublisherServer -Offer $VMImageOfferServerSemiAnnual -Skus $VMImageOfferSKUServerSemiAnnual -Version latest
+  $VirtualMachineSourceImage = Set-AzureRmVMSourceImage -VM  $VirtualMachineConfig -PublisherName $VMImagePublisherServer -Offer $VMImageOfferServer -Skus $VMImageOfferSKUServerSemiAnnual -Version latest
 
   #Set the VM NIC
   $VirtaulMachineNIC = Add-AzureRmVMNetworkInterface -VM $VirtualMachineConfig -Id $nic.Id
@@ -251,13 +369,50 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
   $VirtaulMachineDisk = Set-AzureRmVMOSDisk -Name ($TEESQLAZDisk.tolower() + '.vhd') -vm $VirtualMachineConfig -StorageAccountType $StorageAccountVHDSKU -DiskSizeInGB $TEESQLAZDiskSize -Caching ReadWrite -Windows -CreateOption fromimage
 
   # Create TEE-SQL-AZ virtual machine
-  New-AzureRmVM -ResourceGroupName $ResourceGroup.ResourceGroupName -Location $location -VM $VirtualMachineConfig
+  New-AzureRmVM -ResourceGroupName $ResourceGroup.ResourceGroupName -Location $location -VM $VirtualMachineConfig -LicenseType "Windows_Server"
 
+  <#
   #Set the auto shutdown schedule
   $TEESQLAZVM = Get-AzureRmVM -ResourceGroupName $ResourceGroupName -Name $TEESQLAZName
   $ScheduledShutdownPropertiesTEESQLAZ.Add('targetResourceId', $TEESQLAZVM.Id)
   $ScheduledShutdownResourceId = "/subscriptions/$EmptyGardenAzureSubscriptionID/resourceGroups/$ResourceGroupName/providers/Microsoft.DevTestLab/schedules//shutdown-computevm-$TEESQLAZName"
-  New-AzureRmResource -Location eastus -ResourceId $ScheduledShutdownResourceId  -Properties $ScheduledShutdownPropertiesTEESQLAZ  -Force
+  New-AzureRmResource -Location $Location -ResourceId $ScheduledShutdownResourceId  -Properties $ScheduledShutdownPropertiesTEESQLAZ  -Force
+  #>
+
+  # Join domain
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $TEESQLAZName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEESQLAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEESQLAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEESQLAZSession = New-PSSession -ComputerName $TEESQLAZFQDN -cred $Cred
+
+Copy-Item -Path $TEEHOST -destination C:\Windows\System32\drivers\etc -ToSession $TEESQLAZSession
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {$NETConfig = Get-NetIPConfiguration -InterfaceAlias "Ethernet 2"; Set-DnsClientServerAddress -InterfaceIndex $NETConfig.InterfaceIndex -ServerAddresses "10.10.10.10, 168.63.129.16"}
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {Add-Computer -DomainName $Using:DomainName -OUPath "OU=Servers,OU=CurrentBranch,DC=EmptyGarden,DC=info" -Credential $Using:Cred -Restart}
+
+Start-Sleep -Seconds 120
+
+
+# Enable file and print sharing
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEESQLAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEESQLAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEESQLAZSession = New-PSSession -ComputerName $TEESQLAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled True -Profile Domain}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -Name 'ICMPv4' -DisplayName 'ICMPv4' -Description 'Allow ICMPv4' -Profile Any -Direction Inbound -Action Allow -Protocol ICMPv4 -Program Any -LocalAddress Any -RemoteAddress Any }
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "HTTP" -Direction Inbound –Protocol TCP –LocalPort 80 -Action allow}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SSL" -Direction Inbound –Protocol TCP –LocalPort 443 -Action allow}
+
 
 # Create TEE-CM-AZ
 
@@ -269,7 +424,7 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
 
   # Create a virtual network card and associate with public IP address and NSG
   $IPConfig = New-AzureRmNetworkInterfaceIpConfig -Name $TEECMAZIPName -PrivateIpAddressVersion IPv4 -PrivateIpAddress $TEECMAZIP -SubnetId $VirtualNetwork.subnets.id -PublicIpAddressId $PublicAddress.Id
-  $nic = New-AzureRmNetworkInterface -Name $TEECMAZNICName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $location -IpConfiguration $IPConfig -DnsServer $EmptyGardenDNS
+  $nic = New-AzureRmNetworkInterface -Name $TEECMAZNICName -ResourceGroupName $resourceGroup.ResourceGroupName -Location $location -IpConfiguration $IPConfig #-DnsServer $EmptyGardenDNS
 
   # Create a virtual machine configuration
   $VirtualMachineConfig = New-AzureRmVMConfig -VMName $TEECMAZName -VMSize $VMSizeServerLarge
@@ -297,50 +452,138 @@ $KeyVaultEmptyGardenAdminSecret = Set-AzureKeyVaultSecret -VaultName $KeyVault.V
   # Create TEE-CM-AZ virtual machine
   New-AzureRmVM -ResourceGroupName $ResourceGroup.ResourceGroupName -Location $location -VM $VirtualMachineConfig
   
+  <#
   #Set the auto shutdown schedule
   $TEECMAZVM = Get-AzureRmVM -ResourceGroupName $ResourceGroupName -Name $TEECMAZName
   $ScheduledShutdownPropertiesTEECMAZ.Add('targetResourceId', $TEECMAZVM.Id)
   $ScheduledShutdownResourceId = "/subscriptions/$EmptyGardenAzureSubscriptionID/resourceGroups/$ResourceGroupName/providers/Microsoft.DevTestLab/schedules//shutdown-computevm-$TEECMAZName"
-  New-AzureRmResource -Location eastus -ResourceId $ScheduledShutdownResourceId  -Properties $ScheduledShutdownPropertiesTEECMAZ  -Force
+  New-AzureRmResource -Location $Location -ResourceId $ScheduledShutdownResourceId  -Properties $ScheduledShutdownPropertiesTEECMAZ  -Force
+  #>
 
-# Create EmptyGarden.info Domain
-$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser.UserName
-$AdminUserName = $TEEDCAZName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+# Join domain
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $TEECMAZName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEECMAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEECMAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEECMAZSession = New-PSSession -ComputerName $TEECMAZFQDN -cred $Cred
+
+Copy-Item -Path $TEEHOST -destination C:\Windows\System32\drivers\etc -ToSession $TEECMAZSession
+
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {$NETConfig = Get-NetIPConfiguration -InterfaceAlias "Ethernet 2"; Set-DnsClientServerAddress -InterfaceIndex $NETConfig.InterfaceIndex -ServerAddresses "10.10.10.10, 168.63.129.16"}
+
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {Add-Computer -DomainName $Using:DomainName -OUPath "OU=Servers,OU=CurrentBranch,DC=EmptyGarden,DC=info" -Credential $Using:Cred -Restart}
+
+Start-Sleep -Seconds 120
+
+# Enable file and print sharing
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEECMAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEECMAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEECMAZSession = New-PSSession -ComputerName $TEECMAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {Set-NetFirewallRule -DisplayGroup "File And Printer Sharing" -Enabled True -Profile Domain}
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "HTTP" -Direction Inbound –Protocol TCP –LocalPort 80 -Action allow}
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {New-NetFirewallRule -Name 'ICMPv4' -DisplayName 'ICMPv4' -Description 'Allow ICMPv4' -Profile Any -Direction Inbound -Action Allow -Protocol ICMPv4 -Program Any -LocalAddress Any -RemoteAddress Any }
+
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SSL" -Direction Inbound –Protocol TCP –LocalPort 443 -Action allow}
+
+# Activate Windows
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
 $AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
 $Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
 
 $TEEDCAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEEDCAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
 $TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
 
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-WindowsFeature AD-Domain-Services -IncludeManagementTools}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-ADDSForest -DomainName $Using:DomainName -SafeModeAdministratorPassword $Using:AdminPassword -InstallDns -Force}
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {$service = get-wmiObject -query "select * from SoftwareLicensingService" -computername $Using:TEEDCAZName; $service.InstallProductKey($VMImageOfferSKUServerSemiAnnualKey); $service.RefreshLicenseStatus()}
 
-# Create PKI
-$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser.UserName
+
+# Create MSA
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
 $AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
 $AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
 $Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
 
-$TEEDCAZSession = New-PSSession -ComputerName $TEEDCAZFQDN -cred $Cred
+$TEESQLAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEESQLAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEESQLAZSession = New-PSSession -ComputerName $TEESQLAZFQDN -cred $Cred
 
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Add-WindowsFeature ADCS-Cert-Authority -IncludeManagementTools}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-WindowsFeature Web-WebServer -IncludeManagementTools}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Add-WindowsFeature ADCS-web-enrollment}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-Item -ItemType Directory -Path C:\CertEnroll}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-smbshare -name CertEnroll C:\CertEnroll -FullAccess SYSTEM,"$Using:DomainName\Domain Admins" -ChangeAccess "$Using:DomainName\Cert Publishers"}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-ADcsCertificationAuthority -CACommonName $Using:EmptyGardenRootCA -CAType EnterpriseRootCA -CryptoProviderName "RSA#Microsoft Software Key Storage Provider" -HashAlgorithmName SHA256 -KeyLength 2048 -ValidityPeriod Years -ValidityPeriodUnits 20 -force}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg CA\CRLPublicationURLs "1:C:\Windows\system32\CertSrv\CertEnroll\%3%8%9.crl \n10:ldap:///CN=%7%8,CN=%2,CN=CDP,CN=Public Key Services,CN=Services,%6%10\n2:http://crt.rebeladmin.com/CertEnroll/%3%8%9.crl"}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg CA\CACertPublicationURLs "1:C:\Windows\system32\CertSrv\CertEnroll\%1_%3%4.crt\n2:ldap:///CN=%7,CN=AIA,CN=Public Key Services,CN=Services,%6%11\n2:http://crt.rebeladmin.com/CertEnroll/%1_%3%4.crt"}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg ca\ValidityPeriod "Years"}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -setreg ca\ValidityPeriodUnits 20}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLPeriodUnits 13}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLPeriod "Weeks"}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLDeltaPeriodUnits 0}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLOverlapPeriodUnits 6}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Certutil -setreg CA\CRLOverlapPeriod "Hours"}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Restart-Service certsvc}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {certutil -crl}
-Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Install-ADCSwebenrollment -force}
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEECMAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEECMAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEECMAZSession = New-PSSession -ComputerName $TEECMAZFQDN -cred $Cred
+
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {Add-KdsRootKey –EffectiveTime ((get-date).addhours(-10))}
+
+$msaSQLCMCB = 'msaSQLCMCB.' + $DomainName
+
+Invoke-Command -Session $TEEDCAZSession -ScriptBlock {New-ADServiceAccount -Name msaSQLCMCB -DNSHostName $USING:msaSQLCMCB -PrincipalsAllowedToRetrieveManagedPassword TEE-SQL-AZ$, TEE-CM-AZ$ -Enabled $True}
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {Add-WindowsFeature -Name "RSAT-AD-PowerShell" -IncludeAllSubFeature}
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {Add-WindowsFeature -Name "RSAT-AD-PowerShell" -IncludeAllSubFeature}
+
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {Install-ADServiceAccount -Identity $USING:msaSQLCMCB}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {Install-ADServiceAccount -Identity msaSQLCMCB}
+# Install RSAT
+
+$TEECMAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEECMAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEECMAZSession = New-PSSession -ComputerName $TEECMAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEECMAZSession -ScriptBlock {Install-WindowsFeature -IncludeAllSubFeature RSAT}
+
+# Install SQL
+
+$KeyVaultEmptyGardenAdminSecret = Get-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $EmptyGardenAdminUser
+$AdminUserName = $DomainName + '\' + $KeyVaultEmptyGardenAdminSecret.Name
+$AdminPassword = ConvertTo-SecureString $KeyVaultEmptyGardenAdminSecret.SecretValueText -AsPlainText -Force
+$Cred =  New-Object System.Management.Automation.PSCredential ($AdminUserName, $AdminPassword)
+
+$TEESQLAZFQDN = (Get-AzureRmPublicIpAddress -Name $TEESQLAZPublicAddressName -ResourceGroupName $ResourceGroupName).DnsSettings.Fqdn
+$TEESQLAZSession = New-PSSession -ComputerName $TEESQLAZFQDN -cred $Cred
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-Item -ItemType Directory -Path C:\SQL_DATA; New-Item -ItemType Directory -Path C:\SQL_LOGS;New-Item -ItemType Directory -Path C:\SQL_TEMPDB; New-Item -ItemType Directory -Path C:\SQLISO}
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {netsh advfirewall firewall add rule name = SQLPort dir = in protocol = tcp action = allow localport = 1433 remoteip = localsubnet profile = DOMAIN}
+#Enable SQL Server Ports
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Server" -Direction Inbound –Protocol TCP –LocalPort 1433 -Action allow}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Admin Connection" -Direction Inbound –Protocol TCP –LocalPort 1434 -Action allow}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Database Management" -Direction Inbound –Protocol UDP –LocalPort 1434 -Action allow}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Service Broker" -Direction Inbound –Protocol TCP –LocalPort 4022 -Action allow}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Debugger/RPC" -Direction Inbound –Protocol TCP –LocalPort 135 -Action allow}
+
+#Enable SQL Analysis Ports
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Analysis Services" -Direction Inbound –Protocol TCP –LocalPort 2383 -Action allow}
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {New-NetFirewallRule -DisplayName "SQL Browser" -Direction Inbound –Protocol TCP –LocalPort 2382 -Action allow}
+
+
+Copy-Item -Path $SQLISO -destination c:\SQLISO -ToSession $TEESQLAZSession #Need to creat directory first.  If not, file gets now extension. 
+
+$var = Mount-DiskImage -ImagePath 'C:\SQLISO.iso'
+PS C:\SQLISO> $var | Get-Volume
+
+Invoke-Command -Session $TEESQLAZSession -ScriptBlock {F:\setup.exe /ConfigurationFile=C:\SQLISO\ConfigurationFile.ini /QS /IACCEPTSQLSERVERLICENSETERMS}
+
+.\setup.exe /CONFIGURATIONFILE=EmptyGardenSQL.ini /IAcceptSQLServerLicenseTerms /UIMODE=EnableUIOnServerCore
+
+install-module -Name SQLServer -Force
+
+
+
+# https://docs.microsoft.com/en-us/sql/database-engine/install-windows/install-sql-server-on-server-core?view=sql-server-ver15
 
 #Create and deploy cert????? Not sure if this is possible with powershell.  which is stupid.
 
